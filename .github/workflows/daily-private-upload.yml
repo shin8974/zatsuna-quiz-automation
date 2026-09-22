@@ -19,6 +19,40 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+          pip install -r requirements.txt
+      - name: Generate Short
+        run: python scripts/render_quiz.py
+      - name: Upload privately to YouTube
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: python scripts/upload_private.py
+
+name: Generate and privately upload a quiz Short
+
+on:
+  schedule:
+    # UTC: 23:00 = 08:00 JST, 08:00 = 17:00 JST
+    - cron: "0 23 * * *"
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Generate Short
         run: python scripts/render_quiz.py
