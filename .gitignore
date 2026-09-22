@@ -1,0 +1,10 @@
+# OAuth credentials and tokens must never be committed.
+.env
+oauth_client.json
+token.json
+secrets/
+
+# Generated media
+output/
+__pycache__/
+
