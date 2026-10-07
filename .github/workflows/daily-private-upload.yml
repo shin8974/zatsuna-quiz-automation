@@ -2,8 +2,8 @@ name: Generate and privately upload a quiz Short
 
 on:
   schedule:
-    # JST: Tuesday and Friday, 17:00
-    - cron: "0 8 * * 2,5"
+    # JST: every day, 17:00
+    - cron: "0 8 * * *"
   workflow_dispatch:
 
 permissions:
@@ -19,8 +19,9 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y fonts-noto-cjk ffmpeg
+          # GitHub-hosted runners already have package lists. Skipping apt-get
+          # update avoids an occasional network stall before every daily run.
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk ffmpeg
           pip install -r requirements.txt
       - name: Generate Short
         run: python scripts/render_quiz.py

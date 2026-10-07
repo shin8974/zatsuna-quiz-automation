@@ -21,4 +21,3 @@ Google の未監査 API プロジェクトは、API 経由のアップロード�
 3. 表示された更新トークンと、JSON内の client ID / client secret を GitHub Secrets に一つずつ保存する。
 
 トークンの生成後は、JSONをリポジトリに入れず、PCからも安全な場所に保管または削除する。
-
