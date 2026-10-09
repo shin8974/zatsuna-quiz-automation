@@ -65,7 +65,7 @@ def stick(draw, pose: str):
         draw.line((x + 4, y + 140, x + 95, y + 90), fill=NAVY, width=18)
 
 
-def render_frame(path: Path, question: str, footer: str, pose: str, category="", diagram=None):
+def render_frame(path: Path, question: str, footer: str, pose: str, category="", diagram=None, remaining=None):
     im = Image.new("RGB", (W, H), WHITE)
     draw = ImageDraw.Draw(im)
     draw.rectangle((0, 0, W, 220), fill=PALE)
@@ -91,6 +91,11 @@ def render_frame(path: Path, question: str, footer: str, pose: str, category="",
     for i, line in enumerate(footer.splitlines()):
         centered(draw, line, 1620 + i * 80, 56, NAVY)
     stick(draw, pose)
+    if remaining is not None:
+        draw.ellipse((390, 1110, 610, 1330), fill=PALE, outline=BLUE, width=10)
+        centered(draw, str(remaining), 1150, 100, BLUE)
+        draw.rounded_rectangle((120, 1440, 700, 1460), radius=10, fill=PALE)
+        draw.rounded_rectangle((120, 1440, 120 + 580 * remaining // 5, 1460), radius=10, fill=BLUE)
     im.save(path)
 
 
@@ -103,11 +108,17 @@ def main():
     day = args.date or dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).date()
     category, question, answer, explanation, diagram = quiz_for_day(day)
     q, a = args.output / "question.png", args.output / "answer.png"
-    render_frame(q, question, "10秒で考えてみよう", "point", category, diagram)
+    render_frame(q, question, "ひらめいたら答えて！", "point", category, diagram)
     render_frame(a, f"答え：{answer}", explanation, "explain", category, diagram)
     # Direct cuts keep the text crisp rather than slowly fading.
     concat = args.output / "frames.txt"
-    concat.write_text(f"file '{q.name}'\nduration 10\nfile '{a.name}'\nduration 7\nfile '{a.name}'\n", encoding="utf-8")
+    frames = [f"file '{q.name}'\nduration 3\n"]
+    for remaining in range(5, 0, -1):
+        countdown = args.output / f"countdown-{remaining}.png"
+        render_frame(countdown, question, "答え、決まった？", "point" if remaining % 2 else "explain", category, diagram, remaining)
+        frames.append(f"file '{countdown.name}'\nduration 1\n")
+    frames.append(f"file '{a.name}'\nduration 4\nfile '{a.name}'\n")
+    concat.write_text("".join(frames), encoding="utf-8")
     subprocess.run([
         "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat.name,
         "-vf", "fps=30,format=yuv420p", "-r", "30", "-c:v", "libx264",

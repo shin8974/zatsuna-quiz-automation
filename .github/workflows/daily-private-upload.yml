@@ -2,8 +2,8 @@ name: Generate a quiz Short for manual posting
 
 on:
   schedule:
-    # JST: every day, 17:00
-    - cron: "0 8 * * *"
+    # JST: every day, 06:00; ready for manual morning posting.
+    - cron: "0 21 * * *"
   workflow_dispatch:
 
 permissions:
