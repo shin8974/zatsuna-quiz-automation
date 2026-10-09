@@ -1,4 +1,4 @@
-name: Generate and privately upload a quiz Short
+name: Generate a quiz Short for manual posting
 
 on:
   schedule:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  generate-and-upload:
+  generate-and-deliver:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,9 +25,12 @@ jobs:
           pip install -r requirements.txt
       - name: Generate Short
         run: python scripts/render_quiz.py
-      - name: Upload privately to YouTube
-        env:
-          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
-          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
-          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
-        run: python scripts/upload_private.py
+      - name: Save video and posting text for download
+        uses: actions/upload-artifact@v4
+        with:
+          name: quiz-short-${{ github.run_number }}
+          path: |
+            output/final.mp4
+            output/metadata.txt
+          if-no-files-found: error
+          retention-days: 30
