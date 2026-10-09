@@ -42,3 +42,7 @@ def main():
     ).execute()
     print(json.dumps({"video_id": result["id"], "privacy": "private"}))
 
+
+if __name__ == "__main__":
+    main()
+
