@@ -16,6 +16,26 @@ W, H = 1080, 1920
 WHITE, NAVY, BLUE, PALE = (255, 255, 255), (18, 59, 111), (37, 116, 205), (235, 245, 255)
 FONT = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
 
+# Reviewed, original wording. Rotate category daily without repeating questions.
+QUIZZES = [
+    ("思い込み", "2位の人を追い抜いた。\n今、あなたは何位？", "2位", "相手の2位に入る。\n1位はまだ前にいる。", None),
+    ("図形・配置", "この図の中に\n正方形はいくつ？", "5個", "小さい4個に加えて、\n外側の大きな1個。", "grid"),
+    ("論理", "AはBより前。\nCはAより前。\n3人の最後尾は誰？", "B", "前から C → A → B。\nだから最後尾はB。", None),
+    ("思い込み", "5台で5分に5個作る。\n同じ機械100台なら\n100個作るのに何分？", "5分", "1台が5分で1個。\n100台が同時に作れる。", None),
+    ("図形・配置", "この図の中に\n三角形はいくつ？", "3個", "左右に小さい2個。\n全体で大きな1個。", "triangle"),
+    ("論理", "赤・青・白の箱。\n鍵は赤にはない。\n青にもない。どの箱？", "白い箱", "候補は3つ。\n赤と青を除くと白だけ。", None),
+    ("思い込み", "池の葉が毎日2倍に。\n20日目に池いっぱい。\n半分だったのは何日目？", "19日目", "19日目の半分が、\n翌日に2倍でいっぱい。", None),
+    ("図形・配置", "3×3のマス目。\n正方形は全部でいくつ？", "14個", "1×1が9個、2×2が4個。\n3×3が1個。合計14個。", "grid3"),
+    ("論理", "A・B・Cが並ぶ。\nBは両端ではない。\nAはCより左。並び順は？", "A → B → C", "Bは中央に決まる。\n左がA、右がCになる。", None),
+]
+
+
+def quiz_for_day(day):
+    index = (day - dt.date(2026, 10, 10)).days
+    if not 0 <= index < len(QUIZZES):
+        raise RuntimeError("Reviewed quiz queue exhausted; add new questions before uploading.")
+    return QUIZZES[index]
+
 
 def font(size: int):
     return ImageFont.truetype(FONT, size)
@@ -45,15 +65,31 @@ def stick(draw, pose: str):
         draw.line((x + 4, y + 140, x + 95, y + 90), fill=NAVY, width=18)
 
 
-def render_frame(path: Path, question: str, footer: str, pose: str):
+def render_frame(path: Path, question: str, footer: str, pose: str, category="", diagram=None):
     im = Image.new("RGB", (W, H), WHITE)
     draw = ImageDraw.Draw(im)
     draw.rectangle((0, 0, W, 220), fill=PALE)
     draw.rectangle((0, 208, W, 220), fill=BLUE)
-    centered(draw, "3秒 ざつなクイズ", 65, 60)
+    centered(draw, f"ざつなクイズ｜{category}", 65, 60)
     draw.rounded_rectangle((70, 355, 1010, 1010), radius=38, fill=WHITE, outline=BLUE, width=11)
-    centered(draw, question, 590, 100, BLUE)
-    centered(draw, footer, 1650, 76, NAVY)
+    lines = question.splitlines()
+    size = 64
+    while any(draw.textbbox((0, 0), line, font=font(size))[2] > 840 for line in lines):
+        size -= 2
+    for i, line in enumerate(lines):
+        centered(draw, line, 440 + i * (size + 25), size, BLUE)
+    if diagram:
+        if diagram.startswith("grid"):
+            n = 3 if diagram == "grid3" else 2
+            for i in range(n + 1):
+                p = 390 + i * 300 // n
+                draw.line((p, 700, p, 1000), fill=NAVY, width=8)
+                draw.line((390, 700 + i * 300 // n, 690, 700 + i * 300 // n), fill=NAVY, width=8)
+        else:
+            draw.line((540, 700, 360, 990, 720, 990, 540, 700), fill=NAVY, width=8)
+            draw.line((540, 700, 540, 990), fill=NAVY, width=8)
+    for i, line in enumerate(footer.splitlines()):
+        centered(draw, line, 1620 + i * 80, 56, NAVY)
     stick(draw, pose)
     im.save(path)
 
@@ -61,25 +97,24 @@ def render_frame(path: Path, question: str, footer: str, pose: str):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=Path("output"))
+    parser.add_argument("--date", type=dt.date.fromisoformat)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
-    # Verified identity: (n + 7) × 3 = n×3 + 21.
-    n = (dt.date.today().toordinal() % 7) + 4
-    question = f"（{n} + 7）× 3 = ？"
-    answer = (n + 7) * 3
+    day = args.date or dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).date()
+    category, question, answer, explanation, diagram = quiz_for_day(day)
     q, a = args.output / "question.png", args.output / "answer.png"
-    render_frame(q, question, "答えはコメントで！", "point")
-    render_frame(a, f"答え：{answer}", "分配法則で解ける！", "explain")
+    render_frame(q, question, "10秒で考えてみよう", "point", category, diagram)
+    render_frame(a, f"答え：{answer}", explanation, "explain", category, diagram)
     # Direct cuts keep the text crisp rather than slowly fading.
     concat = args.output / "frames.txt"
-    concat.write_text(f"file '{q.name}'\nduration 4\nfile '{a.name}'\nduration 4\nfile '{a.name}'\n", encoding="utf-8")
+    concat.write_text(f"file '{q.name}'\nduration 10\nfile '{a.name}'\nduration 7\nfile '{a.name}'\n", encoding="utf-8")
     subprocess.run([
         "ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat.name,
         "-vf", "fps=30,format=yuv420p", "-r", "30", "-c:v", "libx264",
         "-movflags", "+faststart", "final.mp4",
     ], cwd=args.output, check=True)
     (args.output / "metadata.txt").write_text(
-        f"【3秒クイズ】{question} #shorts\n\n答え：{answer}。分配法則で確認できる、計算クイズです。\n#クイズ #数学 #ざつなクイズ\n",
+        f"【{category}クイズ】{question.replace(chr(10), '')} #shorts\n\n答え：{answer}\n{explanation}\n#クイズ #ひらめき #ざつなクイズ\n",
         encoding="utf-8",
     )
 
