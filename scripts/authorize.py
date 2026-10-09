@@ -7,11 +7,16 @@ JSON or the printed token.
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
+from urllib.request import Request, urlopen
 
 from google_auth_oauthlib.flow import InstalledAppFlow
 
-SCOPE = ["https://www.googleapis.com/auth/youtube.upload"]
+SCOPE = [
+    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube.readonly",
+]
 
 
 def main():
@@ -34,6 +39,12 @@ def main():
     if not credentials.refresh_token:
         raise RuntimeError("Refresh token was not returned. Revoke the app grant and retry.")
     Path(args.token_file).write_text(credentials.to_json(), encoding="utf-8")
+    request = Request(
+        "https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true",
+        headers={"Authorization": f"Bearer {credentials.token}"},
+    )
+    channel = json.load(urlopen(request))["items"][0]
+    print(f"Authorized channel: {channel['snippet']['title']} ({channel['id']})")
     print("Authorization complete. The refresh token was saved locally in the ignored token file.")
 
 

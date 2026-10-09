@@ -10,6 +10,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 OUT = Path("output")
+EXPECTED_CHANNEL_ID = "UCZQO7v7RG7U8niQ5287osDQ"
 
 
 def main():
@@ -22,9 +23,15 @@ def main():
         token_uri="https://oauth2.googleapis.com/token",
         client_id=os.environ["YT_CLIENT_ID"],
         client_secret=os.environ["YT_CLIENT_SECRET"],
-        scopes=["https://www.googleapis.com/auth/youtube.upload"],
+        scopes=[
+            "https://www.googleapis.com/auth/youtube.upload",
+            "https://www.googleapis.com/auth/youtube.readonly",
+        ],
     )
     youtube = build("youtube", "v3", credentials=credentials)
+    channel = youtube.channels().list(part="id", mine=True).execute()["items"][0]
+    if channel["id"] != EXPECTED_CHANNEL_ID:
+        raise RuntimeError("OAuth token is not connected to the ざつなクイズ channel.")
     result = youtube.videos().insert(
         part="snippet,status",
         body={
